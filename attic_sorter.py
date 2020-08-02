@@ -10,14 +10,78 @@ Created on Sat Aug  1 14:02:33 2020
 import sqlite3
 from tabulate import tabulate
 
-#init db params
+#==============================================================init db params
 class Params:
     def __init__(self):
         self.TODOS = [(1,'Sell'), (2,'Donate'), (3,'Garbage'), (4,'Keep')]
         self.CONDITIONS = [(1,'Poor'), (2,'Fair'), (3,'Good'), (4,'Excellent')]
         self.TYPES = []
 
-#setup sqlite3 db
+#==============================================================setup user Interface
+class Interface:
+    
+    def __init__(self, cursor, params):
+        self.cursor = cursor
+        self.params = params
+        self.STATES = ['EXIT','MENU','ADD','TYPE']
+        self.COMMANDS = ['e','a','t','d']
+        self.state = 'MENU'
+        
+    def interpretInput(self, userInput):
+        if self.state == 'MENU':
+            if userInput == 'e':
+                self.state = 'EXIT'
+            elif userInput == 'a':
+                self.state = 'ADD'
+            elif userInput == 't':
+                self.state = 'TYPE'
+            elif userInput == 'd':
+                self.displayItems()
+        elif self.state == 'ADD' or self.state == 'TYPE':
+            if userInput == 'e':
+                self.state = 'MENU'
+        else:
+            return
+    
+    def displayAddFeature(self, userInput):
+        class notEnoughProps(Exception): pass
+        print('LOG A NEW ITEM (name, desc, todo, type, condition)\n')
+        try:
+            newItemProps = userInput.split(',')
+            for item in range(len(newItemProps)):
+                newItemProps[item] = newItemProps[item].strip()
+            print(newItemProps)
+            if len(newItemProps) < 5:
+                raise notEnoughProps
+            self.cursor.execute(f'INSERT INTO items(name, desc, todo_key, type_key, cond_key) VALUES ("{newItemProps[0]}","{newItemProps[1]}",{int(newItemProps[2])},{int(newItemProps[3])},{int(newItemProps[4])})')
+            print(f'Successfully added {newItemProps[0]}')
+        except notEnoughProps:
+            print('You didnt put in enough info')
+    
+    def displayTypeFeature(self, userInput):
+        print('ADD A NEW TYPE (min 3 characters)\n')
+        print(tabulate(self.params.TYPES,headers=('TYPE CODES:',)))
+        if userInput is None or len(userInput) <= 3 or userInput in self.params.TYPES:
+            return
+        self.cursor.execute(f'INSERT INTO types (name) VALUES ("{userInput}")')
+        print(f'Added {userInput}')
+        
+    def displayItems(self):
+        print(tabulate(self.cursor.execute('SELECT * FROM items').fetchall(),headers=['ID','Name','Description','To-do','Item Type', 'Condition']))
+        
+    def run(self):
+        #Event Loop
+        while self.state != 'EXIT':
+            userInput = input('>')
+            self.interpretInput(userInput)
+            if self.state == 'ADD':
+                self.displayAddFeature(userInput)
+            elif self.state == 'TYPE':
+                self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
+                self.displayTypeFeature(userInput)
+        print('Bye-bye')
+    
+#==============================================================setup sqlite3 db
 def create_conn(db_file):
     conn = None
     try:
@@ -28,7 +92,7 @@ def create_conn(db_file):
         if conn:
             return conn, conn.cursor()
         
-#check tables
+#==============================================================check tables
 def tables_exist(cursor):
     item_table = cursor.execute('''SELECT name 
                           FROM sqlite_master 
@@ -38,7 +102,7 @@ def tables_exist(cursor):
         return True
     return False
 
-#init tables
+#==============================================================init tables
 def create_tables(conn, cursor, params):
     #init todos table
     cursor.execute('''CREATE TABLE IF NOT EXISTS todos (
@@ -82,63 +146,7 @@ def create_tables(conn, cursor, params):
     
     conn.commit()
 
-#setup user Interface
-class Interface:
-    
-    def __init__(self, cursor, params):
-        self.cursor = cursor
-        self.params = params
-        self.STATES = ['EXIT','MENU','ADD','TYPE']
-        self.COMMANDS = ['e','a','t']
-        self.state = 'MENU'
-        
-    def interpretInput(self, userInput):
-        if self.state == 'MENU':
-            if userInput == 'e':
-                self.state = 'EXIT'
-            elif userInput == 'a':
-                self.state = 'ADD'
-            elif userInput == 't':
-                self.state = 'TYPE'
-        elif self.state == 'ADD' or self.state == 'TYPE':
-            if userInput == 'e':
-                self.state = 'MENU'
-        else:
-            return
-    
-    def displayAddFeature(self, userInput):
-        class notEnoughProps(Exception): pass
-        print('LOG A NEW ITEM (name, desc, todo, type, condition)\n')
-        try:
-            newItemProps = userInput.split(' ')
-            if len(newItemProps) < 5:
-                raise notEnoughProps
-            output = self.cursor.execute(f'INSERT INTO items VALUES ({newItemProps[0]},{newItemProps[1]},{newItemProps[2]},{newItemProps[3]},{newItemProps[4]})')
-            print(output)
-        except notEnoughProps:
-            print("You didnt put in enough info")
-    
-    def displayTypeFeature(self, userInput):
-        print('ADD A NEW TYPE (min 3 characters)\n')
-        print(tabulate(self.params.TYPES,headers=('TYPE CODES:',)))
-        if userInput is None or len(userInput) <= 3 or userInput in self.params.TYPES:
-            return
-        self.cursor.execute(f'INSERT INTO types (name) VALUES ("{userInput}")')
-        print(f'Added {userInput}')
-        
-    def run(self):
-        #Event Loop
-        while self.state != 'EXIT':
-            userInput = input('>')
-            self.interpretInput(userInput)
-            if self.state == 'ADD':
-                self.displayAddFeature(userInput)
-            elif self.state == 'TYPE':
-                self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
-                self.displayTypeFeature(userInput)
-        print('Bye-bye')
-    
-
+#==============================================================main
 if __name__ == '__main__':
     conn, cursor = create_conn('attic.db')
     params = Params()
