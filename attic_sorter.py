@@ -23,11 +23,15 @@ class Interface:
     def __init__(self, cursor, params):
         self.cursor = cursor
         self.params = params
+        self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
         self.STATES = ['EXIT','MENU','ADD','TYPE']
         self.COMMANDS = ['e','a','t','d']
         self.state = 'MENU'
         
     def interpretInput(self, userInput):
+        if userInput == 'ls':
+            print(self.state)
+            return
         if self.state == 'MENU':
             if userInput == 'e':
                 self.state = 'EXIT'
@@ -45,7 +49,13 @@ class Interface:
     
     def displayAddFeature(self, userInput):
         class notEnoughProps(Exception): pass
-        print('LOG A NEW ITEM (name, desc, todo, type, condition)\n')
+        print('LOG A NEW ITEM (name, desc, todo_key, type, condition)\n')
+        table_type = tabulate(self.params.TYPES, headers=['Key', 'Type'])
+        table_todo = tabulate(self.params.TODOS, headers=['Key', 'To-Do'])
+        table_conditions = tabulate(self.params.CONDITIONS, headers=['Key','Condition'])
+        print(table_type+'\n\n', table_todo+'\n\n', table_conditions)
+        #print(tabulate([self.params.TODOS,self.params.CONDITIONS,self.params.TYPES],headers=['To-Do Keys','Condition Keys','Type Keys']))
+        
         try:
             newItemProps = userInput.split(',')
             for item in range(len(newItemProps)):
@@ -59,6 +69,7 @@ class Interface:
             print('You didnt put in enough info')
     
     def displayTypeFeature(self, userInput):
+        self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
         print('ADD A NEW TYPE (min 3 characters)\n')
         print(tabulate(self.params.TYPES,headers=('TYPE CODES:',)))
         if userInput is None or len(userInput) <= 3 or userInput in self.params.TYPES:
@@ -70,15 +81,16 @@ class Interface:
         print(tabulate(self.cursor.execute('SELECT * FROM items').fetchall(),headers=['ID','Name','Description','To-do','Item Type', 'Condition']))
         
     def run(self):
+        userInput = None
         #Event Loop
         while self.state != 'EXIT':
-            userInput = input('>')
-            self.interpretInput(userInput)
+            self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
             if self.state == 'ADD':
                 self.displayAddFeature(userInput)
             elif self.state == 'TYPE':
-                self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
                 self.displayTypeFeature(userInput)
+            userInput = input('>')
+            self.interpretInput(userInput)
         print('Bye-bye')
     
 #==============================================================setup sqlite3 db
