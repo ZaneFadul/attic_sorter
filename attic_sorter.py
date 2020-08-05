@@ -60,7 +60,6 @@ class Interface:
             newItemProps = userInput.split(',')
             for item in range(len(newItemProps)):
                 newItemProps[item] = newItemProps[item].strip()
-            print(newItemProps)
             if len(newItemProps) < 5:
                 raise notEnoughProps
             self.cursor.execute(f'INSERT INTO items(name, desc, type_key, todo_key, cond_key) VALUES ("{newItemProps[0]}","{newItemProps[1]}",{int(newItemProps[2])},{int(newItemProps[3])},{int(newItemProps[4])})')
@@ -74,6 +73,8 @@ class Interface:
         print(tabulate(self.params.TYPES,headers=('TYPE CODES:',)))
         if userInput is None or len(userInput) <= 3 or userInput in self.params.TYPES:
             return
+        userInput = userInput.lower()
+        userInput = userInput.capitalize()
         self.cursor.execute(f'INSERT INTO types (name) VALUES ("{userInput}")')
         print(f'Added {userInput}')
         
