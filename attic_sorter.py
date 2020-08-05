@@ -49,7 +49,7 @@ class Interface:
     
     def displayAddFeature(self, userInput):
         class notEnoughProps(Exception): pass
-        print('LOG A NEW ITEM (name, desc, todo_key, type, condition)\n')
+        print('LOG A NEW ITEM (name, desc, type, todo_key, condition)\n')
         table_type = tabulate(self.params.TYPES, headers=['Key', 'Type'])
         table_todo = tabulate(self.params.TODOS, headers=['Key', 'To-Do'])
         table_conditions = tabulate(self.params.CONDITIONS, headers=['Key','Condition'])
@@ -63,7 +63,7 @@ class Interface:
             print(newItemProps)
             if len(newItemProps) < 5:
                 raise notEnoughProps
-            self.cursor.execute(f'INSERT INTO items(name, desc, todo_key, type_key, cond_key) VALUES ("{newItemProps[0]}","{newItemProps[1]}",{int(newItemProps[2])},{int(newItemProps[3])},{int(newItemProps[4])})')
+            self.cursor.execute(f'INSERT INTO items(name, desc, type_key, todo_key, cond_key) VALUES ("{newItemProps[0]}","{newItemProps[1]}",{int(newItemProps[2])},{int(newItemProps[3])},{int(newItemProps[4])})')
             print(f'Successfully added {newItemProps[0]}')
         except notEnoughProps:
             print('You didnt put in enough info')
@@ -82,10 +82,10 @@ class Interface:
         allItems = self.cursor.execute('SELECT * FROM items').fetchall()
         for i in range(len(allItems)):
             allItems[i] = list(allItems[i])
-            allItems[i][3] = self.params.TODOS[allItems[i][3] - 1][1]
-            allItems[i][4] = self.params.TYPES[allItems[i][4] - 1][1]
+            allItems[i][3] = self.params.TYPES[allItems[i][3] - 1][1]
+            allItems[i][4] = self.params.TODOS[allItems[i][4] - 1][1]
             allItems[i][5] = self.params.CONDITIONS[allItems[i][5] - 1][1]
-        print(tabulate(allItems,headers=['ID','Name','Description','To-do','Item Type', 'Condition']))
+        print(tabulate(allItems,headers=['ID','Name','Description','Item Type','To Do', 'Condition']))
         
     def run(self):
         userInput = None
@@ -149,13 +149,13 @@ def create_tables(conn, cursor, params):
                         id INTEGER PRIMARY KEY,
                         name TEXT,
                         desc TEXT,
-                        todo_key INTEGER NOT NULL,
                         type_key INTEGER NOT NULL,
+                        todo_key INTEGER NOT NULL,
                         cond_key INTEGER NOT NULL,
-                        FOREIGN KEY (todo_key) REFERENCES todos (id)
+                        FOREIGN KEY (type_key) REFERENCES types (id)
                                 ON DELETE CASCADE
                                 ON UPDATE CASCADE,
-                        FOREIGN KEY (type_key) REFERENCES types (id)
+                        FOREIGN KEY (todo_key) REFERENCES todos (id)
                                 ON DELETE CASCADE
                                 ON UPDATE CASCADE,
                         FOREIGN KEY (cond_key) REFERENCES conditions (id)
