@@ -78,7 +78,14 @@ class Interface:
         print(f'Added {userInput}')
         
     def displayItems(self):
-        print(tabulate(self.cursor.execute('SELECT * FROM items').fetchall(),headers=['ID','Name','Description','To-do','Item Type', 'Condition']))
+        self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
+        allItems = self.cursor.execute('SELECT * FROM items').fetchall()
+        for i in range(len(allItems)):
+            allItems[i] = list(allItems[i])
+            allItems[i][3] = self.params.TODOS[allItems[i][3] - 1][1]
+            allItems[i][4] = self.params.TYPES[allItems[i][4] - 1][1]
+            allItems[i][5] = self.params.CONDITIONS[allItems[i][5] - 1][1]
+        print(tabulate(allItems,headers=['ID','Name','Description','To-do','Item Type', 'Condition']))
         
     def run(self):
         userInput = None
