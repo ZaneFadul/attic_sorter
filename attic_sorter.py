@@ -168,7 +168,8 @@ def create_tables(conn, cursor, params):
 
 #==============================================================main
 if __name__ == '__main__':
-    conn, cursor = create_conn('attic.db')
+    database = input('Name of Declutter Database: ')
+    conn, cursor = create_conn(f'{database}.db')
     params = Params()
     try:
         if not tables_exist(cursor):
