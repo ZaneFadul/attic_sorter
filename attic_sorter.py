@@ -6,10 +6,20 @@ Created on Sat Aug  1 14:02:33 2020
 
 @author: Zane Fadul
 """
-
+import time
+import subprocess
+import os
 import sqlite3
 from tabulate import tabulate
 
+def clearScreen():
+    try:
+        os.system('cls')
+    except:
+        os.system('clear')
+    finally:
+        pass
+    
 #==============================================================init db params
 class Params:
     def __init__(self):
@@ -45,7 +55,7 @@ class Interface:
             if userInput == 'e':
                 self.state = 'MENU'
         else:
-            return
+            print('Unknown Command')
     
     def displayAddFeature(self, userInput):
         class notEnoughProps(Exception): pass
@@ -168,9 +178,16 @@ def create_tables(conn, cursor, params):
 
 #==============================================================main
 if __name__ == '__main__':
-    database = input('Name of Declutter Database: ')
+    database = ''
+    illegalFSNameChars = [':','.','"', '/','\'','^','@','!','?']
+    while len(database) <= 0:
+        database = input('Name of Declutter Database: ')
+        for char in illegalFSNameChars:
+            if char in database:
+                database = ''
     conn, cursor = create_conn(f'{database}.db')
     params = Params()
+    clearScreen()
     try:
         if not tables_exist(cursor):
             create_tables(conn, cursor, params)
@@ -181,3 +198,4 @@ if __name__ == '__main__':
     finally:
         conn.commit()
         conn.close()
+        time.sleep(.8)
