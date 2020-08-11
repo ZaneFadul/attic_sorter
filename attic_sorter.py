@@ -109,9 +109,10 @@ class Interface:
     def exportCSV(self):
         try:
             workbook = xlsxwriter.Workbook(f'{self.params.NAME}.xlsx')
-            worksheet = workbook.add_worksheet('All')
+            sheet_all = workbook.add_worksheet('All')
             for item in enumerate(self.getReadableItems()):
-                print(item)
+                for col in range(len(item[1])-1):
+                    sheet_all.write(item[0],col,item[1][col+1])
             workbook.close()
         except:
             return
