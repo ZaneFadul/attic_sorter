@@ -7,9 +7,10 @@ Created on Sat Aug  1 14:02:33 2020
 @author: Zane Fadul
 """
 import time
-import subprocess
 import os
 import sqlite3
+import xlsxwriter
+
 from tabulate import tabulate
 
 def clearScreen():
@@ -22,10 +23,11 @@ def clearScreen():
     
 #==============================================================init db params
 class Params:
-    def __init__(self):
+    def __init__(self, DB_Name):
         self.TODOS = [(1,'Sell'), (2,'Donate'), (3,'Garbage'), (4,'Keep')]
         self.CONDITIONS = [(1,'Poor'), (2,'Fair'), (3,'Good'), (4,'Excellent')]
         self.TYPES = []
+        self.NAME = DB_Name
 
 #==============================================================setup user Interface
 class Interface:
@@ -35,7 +37,7 @@ class Interface:
         self.params = params
         self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
         self.STATES = ['EXIT','MENU','ADD','TYPE']
-        self.COMMANDS = ['e','a','t','d']
+        self.COMMANDS = ['e','a','t','d','x']
         self.state = 'MENU'
         
     def interpretInput(self, userInput):
@@ -51,11 +53,23 @@ class Interface:
                 self.state = 'TYPE'
             elif userInput == 'd':
                 self.displayItems()
+            elif userInput == 'x':
+                self.exportCSV()
         elif self.state == 'ADD' or self.state == 'TYPE':
             if userInput == 'e':
                 self.state = 'MENU'
         else:
             print('Unknown Command')
+    
+    def getReadableItems(self):
+        self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
+        allItems = self.cursor.execute('SELECT * FROM items').fetchall()
+        for i in range(len(allItems)):
+            allItems[i] = list(allItems[i])
+            allItems[i][3] = self.params.TYPES[allItems[i][3] - 1][1]
+            allItems[i][4] = self.params.TODOS[allItems[i][4] - 1][1]
+            allItems[i][5] = self.params.CONDITIONS[allItems[i][5] - 1][1]
+        return allItems
     
     def displayAddFeature(self, userInput):
         class notEnoughProps(Exception): pass
@@ -89,14 +103,18 @@ class Interface:
         print(f'Added {userInput}')
         
     def displayItems(self):
-        self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
-        allItems = self.cursor.execute('SELECT * FROM items').fetchall()
-        for i in range(len(allItems)):
-            allItems[i] = list(allItems[i])
-            allItems[i][3] = self.params.TYPES[allItems[i][3] - 1][1]
-            allItems[i][4] = self.params.TODOS[allItems[i][4] - 1][1]
-            allItems[i][5] = self.params.CONDITIONS[allItems[i][5] - 1][1]
+        allItems = self.getReadableItems()
         print(tabulate(allItems,headers=['ID','Name','Description','Item Type','To Do', 'Condition']))
+    
+    def exportCSV(self):
+        try:
+            workbook = xlsxwriter.Workbook(f'{self.params.NAME}.xlsx')
+            worksheet = workbook.add_worksheet('All')
+            for item in enumerate(self.getReadableItems()):
+                print(item)
+            workbook.close()
+        except:
+            return
         
     def run(self):
         userInput = None
@@ -186,7 +204,7 @@ if __name__ == '__main__':
             if char in database:
                 database = ''
     conn, cursor = create_conn(f'{database}.db')
-    params = Params()
+    params = Params(database)
     clearScreen()
     try:
         if not tables_exist(cursor):
