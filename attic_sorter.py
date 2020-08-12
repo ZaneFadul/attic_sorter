@@ -110,9 +110,22 @@ class Interface:
         try:
             workbook = xlsxwriter.Workbook(f'{self.params.NAME}.xlsx')
             sheet_all = workbook.add_worksheet('All')
+            todo_sheets = []
+            cell_orange = workbook.add_format({'bg_color': 'orange'})
+            cell_blue = workbook.add_format({'bg_color': 'blue'})
+            cell_red = workbook.add_format({'bg_color': 'red'})
+            cell_green = workbook.add_format({'bg_color': 'green'})
+            todo_colors = {'Sell':cell_orange,
+                           'Donate':cell_blue,
+                           'Garbage':cell_red,
+                           'Keep':cell_green,
+                           }
+            for todo in self.params.TODOS:
+                todo_sheets.append((todo[0], workbook.add_worksheet(f'{todo[1]}')))
             for item in enumerate(self.getReadableItems()):
+                cell_format = todo_colors[item[1][4]] #todo
                 for col in range(len(item[1])-1):
-                    sheet_all.write(item[0],col,item[1][col+1])
+                    sheet_all.write(item[0],col,item[1][col+1], cell_format)
             workbook.close()
         except:
             return
