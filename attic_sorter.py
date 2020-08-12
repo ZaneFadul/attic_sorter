@@ -122,10 +122,10 @@ class Interface:
                            }
             for todo in self.params.TODOS:
                 todo_sheets.append((todo[0], workbook.add_worksheet(f'{todo[1]}')))
-            for item in enumerate(self.getReadableItems()):
-                cell_format = todo_colors[item[1][4]] #todo
-                for col in range(len(item[1])-1):
-                    sheet_all.write(item[0],col,item[1][col+1], cell_format)
+            for i, item in enumerate(self.getReadableItems()):
+                cell_format = todo_colors[item[4]] #todo
+                for col in range(len(item)-1):
+                    sheet_all.write(i,col,item[col+1], cell_format)
             workbook.close()
         except:
             return
