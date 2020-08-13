@@ -108,8 +108,14 @@ class Interface:
     
     def exportCSV(self):
         try:
+            allItems = self.getReadableItems()
             workbook = xlsxwriter.Workbook(f'{self.params.NAME}.xlsx')
             sheet_all = workbook.add_worksheet('All')
+            sheet_all.autofilter(0,0,len(allItems),len(allItems[0]))
+            sheet_all.filter_column('D','x == Sell')
+            sheet_all.filter_column('D','x == Donate')
+            sheet_all.filter_column('D','x == Garbage')
+            sheet_all.filter_column('D','x == Keep')
             todo_sheets = []
             cell_orange = workbook.add_format({'bg_color': 'orange'})
             cell_blue = workbook.add_format({'bg_color': 'blue'})
@@ -122,10 +128,13 @@ class Interface:
                            }
             for todo in self.params.TODOS:
                 todo_sheets.append((todo[0], workbook.add_worksheet(f'{todo[1]}')))
-            for i, item in enumerate(self.getReadableItems()):
+            for i, item in enumerate(allItems):
                 cell_format = todo_colors[item[4]] #todo
                 for col in range(len(item)-1):
                     sheet_all.write(i,col,item[col+1], cell_format)
+            
+            for row in allItems:
+                pass
             workbook.close()
         except:
             return
