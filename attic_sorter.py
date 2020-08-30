@@ -8,10 +8,39 @@ Created on Sat Aug  1 14:02:33 2020
 """
 import time
 import os
-import sqlite3
-import xlsxwriter
+import subprocess
 
-from tabulate import tabulate
+try:
+    import xlsxwriter
+except:
+    try:
+        subprocess.check_call(['py','-m','pip','install','xlsxwriter'])
+        import xlsxwriter
+    except:
+        print('Cannot install module.')
+        time.sleep(0.5)
+        raise Exception
+try:
+    import sqlite3
+except:
+    try:
+        subprocess.check_call(['py','-m','pip','install','sqlite3'])
+        import sqlite3
+    except:
+        print('Cannot install module.')
+        time.sleep(0.5)
+        raise Exception  
+
+try:
+    from tabulate import tabulate
+except:
+    try:
+        subprocess.check_call(['py','-m','pip','install','tabulate'])
+        from tabulate import tabulate
+    except:
+        print('Cannot install module.')
+        time.sleep(0.5)
+        raise Exception  
 
 def clearScreen():
     try:
@@ -36,12 +65,19 @@ class Interface:
         self.cursor = cursor
         self.params = params
         self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
-        self.STATES = ['EXIT','MENU','ADD','TYPE']
-        self.COMMANDS = ['e','a','t','d','x']
+        self.EXIT = 'e'
+        self.MENU = 'm'
+        self.ADD = 'a'
+        self.TYPE = 't'
+        self.EXPORT = 'x'
+        self.DISPLAY = 'd'
+        self.STATES = [self.MENU,self.ADD,self.TYPE]
+        self.COMMANDS = [self.EXIT,self.ADD,self.TYPE,self.EXPORT, self.DISPLAY]
         self.state = 'MENU'
+        self.HISTORY = []
         
     def interpretInput(self, userInput):
-        if userInput == 'ls':
+        if userInput == 'pwd':
             print(self.state)
             return
         if self.state == 'MENU':
@@ -143,6 +179,7 @@ class Interface:
         userInput = None
         #Event Loop
         while self.state != 'EXIT':
+            clearScreen()
             self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
             if self.state == 'ADD':
                 self.displayAddFeature(userInput)
