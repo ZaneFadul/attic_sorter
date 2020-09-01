@@ -71,34 +71,54 @@ class Interface:
         self.TYPE = 't'
         self.EXPORT = 'x'
         self.DISPLAY = 'd'
-        self.STATES = [self.MENU,self.ADD,self.TYPE]
-        self.COMMANDS = [self.EXIT,self.ADD,self.TYPE,self.EXPORT, self.DISPLAY]
+        self.UPDATE = 'u'
+        self.STATES = [self.MENU,self.ADD,self.TYPE,self.UPDATE]
         self.state = 'MENU'
+        self.COMMANDS = None
+        self.generateCommands()
         self.HISTORY = []
+    
+    def generateCommands(self):
+        self.COMMANDS = [(self.EXIT,f'exit from {self.state}'),
+                 (self.ADD,'log a new item'),
+                 (self.TYPE,'add a new item type'),
+                 (self.EXPORT,'export as excel sheet'),
+                 (self.DISPLAY,'display all logged items'),
+                 (self.UPDATE,'update logged items')
+                 ]
         
     def interpretInput(self, userInput):
-        if userInput == 'pwd':
-            print(self.state)
-            return
         if self.state == 'MENU':
-            if userInput == 'e':
+            if userInput == self.EXIT:
                 self.state = 'EXIT'
-            elif userInput == 'a':
+            elif userInput == self.ADD:
+                self.updateTypes()
                 self.state = 'ADD'
-            elif userInput == 't':
+            elif userInput == self.TYPE:
+                self.updateTypes()
                 self.state = 'TYPE'
-            elif userInput == 'd':
+            elif userInput == self.DISPLAY:
                 self.displayItems()
-            elif userInput == 'x':
+            elif userInput == self.EXPORT:
                 self.exportCSV()
-        elif self.state == 'ADD' or self.state == 'TYPE':
+            elif userInput == self.UPDATE:
+                self.state = 'UPDATE'
+        elif self.state == 'ADD' or self.state == 'TYPE' or self.state == 'UPDATE':
             if userInput == 'e':
                 self.state = 'MENU'
         else:
             print('Unknown Command')
     
-    def getReadableItems(self):
+    def updateTypes(self):
         self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
+        
+    def displayCommands(self):
+        self.generateCommands()
+        table = tabulate(self.COMMANDS)
+        print(f'COMMANDS\n {table}\n')
+        
+    def getReadableItems(self):
+        self.updateTypes()
         allItems = self.cursor.execute('SELECT * FROM items').fetchall()
         for i in range(len(allItems)):
             allItems[i] = list(allItems[i])
@@ -122,16 +142,31 @@ class Interface:
                 newItemProps[item] = newItemProps[item].strip()
             if len(newItemProps) < 5:
                 raise notEnoughProps
+            
+            #error handle type
+            if not newItemProps[2].isdigit() or int(newItemProps[2]) not in range(1, len(self.params.TYPES) + 1):
+                print('invalid type #')
+                return
+            #error handle todo
+            if not newItemProps[3].isdigit() or int(newItemProps[3]) not in range(1, len(self.params.TODOS) + 1):
+                print('invalid todo #')
+                return
+            #error handle condition
+            if not newItemProps[4].isdigit() or int(newItemProps[4]) not in range(1, len(self.params.CONDITIONS) + 1):
+                print('invalid cond #')
+                return
+            
             self.cursor.execute(f'INSERT INTO items(name, desc, type_key, todo_key, cond_key) VALUES ("{newItemProps[0]}","{newItemProps[1]}",{int(newItemProps[2])},{int(newItemProps[3])},{int(newItemProps[4])})')
             print(f'Successfully added {newItemProps[0]}')
         except notEnoughProps:
             print('You didnt put in enough info')
     
     def displayTypeFeature(self, userInput):
-        self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
+        self.updateTypes()
         print('ADD A NEW TYPE (min 3 characters)\n')
         print(tabulate(self.params.TYPES,headers=('TYPE CODES:',)))
-        if userInput is None or len(userInput) <= 3 or userInput in self.params.TYPES:
+        if userInput is None or len(userInput) < 3 or userInput in self.params.TYPES:
+            print('INVALID INPUT')
             return
         userInput = userInput.lower()
         userInput = userInput.capitalize()
@@ -141,6 +176,14 @@ class Interface:
     def displayItems(self):
         allItems = self.getReadableItems()
         print(tabulate(allItems,headers=['ID','Name','Description','Item Type','To Do', 'Condition']))
+    
+    def displayUpdateFeature(self, userInput):
+        if not userInput.isdigit():
+            print('Input a valid Item ID #')
+            return
+        ID = int(userInput)
+        currentItem = self.cursor.execute(f'SELECT * FROM items WHERE ID = "{ID}"').fetchall()
+        print(currentItem)
     
     def exportCSV(self):
         try:
@@ -152,16 +195,16 @@ class Interface:
             sheet_all.filter_column('D','x == Donate')
             sheet_all.filter_column('D','x == Garbage')
             sheet_all.filter_column('D','x == Keep')
-            todo_sheets = []
-            cell_orange = workbook.add_format({'bg_color': 'orange'})
-            cell_blue = workbook.add_format({'bg_color': 'blue'})
-            cell_red = workbook.add_format({'bg_color': 'red'})
-            cell_green = workbook.add_format({'bg_color': 'green'})
+            cell_orange = workbook.add_format({'font_color':'white','bg_color': 'orange'})
+            cell_blue = workbook.add_format({'font_color':'white','bg_color': 'blue'})
+            cell_red = workbook.add_format({'font_color':'white','bg_color': 'red'})
+            cell_green = workbook.add_format({'font_color':'white','bg_color': 'green'})
             todo_colors = {'Sell':cell_orange,
                            'Donate':cell_blue,
                            'Garbage':cell_red,
                            'Keep':cell_green,
                            }
+            todo_sheets = []
             for todo in self.params.TODOS:
                 todo_sheets.append((todo[0], workbook.add_worksheet(f'{todo[1]}')))
             for i, item in enumerate(allItems):
@@ -172,6 +215,7 @@ class Interface:
             for row in allItems:
                 pass
             workbook.close()
+            print('Successfully exported!')
         except:
             return
         
@@ -179,13 +223,17 @@ class Interface:
         userInput = None
         #Event Loop
         while self.state != 'EXIT':
-            clearScreen()
+            print(f'{self.state}:\n')
+            self.displayCommands()
             self.params.TYPES = (self.cursor.execute('SELECT * FROM types').fetchall())
             if self.state == 'ADD':
                 self.displayAddFeature(userInput)
             elif self.state == 'TYPE':
                 self.displayTypeFeature(userInput)
-            userInput = input('>')
+            elif self.state == 'UPDATE':
+                self.displayUpdateFeature(userInput)
+            userInput = input('> ')
+            clearScreen()
             self.interpretInput(userInput)
         print('Bye-bye')
     
